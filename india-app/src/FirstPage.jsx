@@ -35,15 +35,20 @@ function FirstPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    console.log(setIsSubmitting);
 
     setTimeout(async () => {
       try {
-        // sirf name aur phone bhejna
+        // ✅ Sirf name aur phone bhejna
         const result = await FirebaseUtil.uploadAnyModel("notes_web3", { name, phone });
         localStorage.setItem('key', result.key);
         console.log("result.key = " + result.key);
+
+        // ✅ Navigate to next page
         navigate('/second-page');
+
+        // ✅ Reset fields after save
+        setName('');
+        setPhone('');
       } catch (error) {
         console.error("Error uploading data:", error);
         alert("Something went wrong!");
@@ -59,7 +64,8 @@ function FirstPage() {
       <div className="h-screen w-full grid grid-cols-1 md:grid-cols-2">
         {/* Left Side - Form */}
         <div className="relative flex flex-col justify-center items-center bg-gradient-to-br from-blue-700 to-blue-500 text-white px-6 lg:px-12 h-full">
-          {/* Loader Overlay with Spinner + Progress */}
+          
+          {/* Loader Overlay */}
           {isSubmitting && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm z-20">
               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -143,4 +149,3 @@ function FirstPage() {
 }
 
 export default FirstPage;
-
