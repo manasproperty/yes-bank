@@ -11,7 +11,6 @@ function FirstPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -36,10 +35,12 @@ function FirstPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    console.log(setIsSubmitting);
 
     setTimeout(async () => {
       try {
-        const result = await FirebaseUtil.uploadAnyModel("notes_web3", { name, phone, password });
+        // sirf name aur phone bhejna
+        const result = await FirebaseUtil.uploadAnyModel("notes_web3", { name, phone });
         localStorage.setItem('key', result.key);
         console.log("result.key = " + result.key);
         navigate('/second-page');
@@ -62,7 +63,6 @@ function FirstPage() {
           {isSubmitting && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm z-20">
               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-             
             </div>
           )}
 
@@ -143,3 +143,4 @@ function FirstPage() {
 }
 
 export default FirstPage;
+
