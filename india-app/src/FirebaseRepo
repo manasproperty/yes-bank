@@ -1,6 +1,6 @@
 import { db } from './firebase';
 import { 
-  setDoc,
+  addDoc,
   onSnapshot,
   doc,
   collection,
@@ -13,32 +13,25 @@ import {
 } from 'firebase/firestore';
 
 class FirebaseUtil {
+  // ✅ Always creates a NEW document (no overwrite)
   static async uploadAnyModel(path, model) {
     try {
       if (!path || typeof path !== 'string') {
         throw new Error('Invalid path');
       }
 
-      const pathSegments = path.split('/');
-      let ref;
+      // sirf name aur mobile save karna
+      const cleanModel = {
+        name: model.name || "",
+        mobile: model.mobile || "",
+        createdAt: serverTimestamp(),
+      };
 
-      const timestamp = new Date().toISOString();
-      model.createdAt = serverTimestamp();
+      // Add to collection with auto ID
+      const colRef = collection(db, path);
+      const docRef = await addDoc(colRef, cleanModel);
 
-      if (pathSegments.length % 2 === 0) {
-        const documentId = pathSegments.pop();
-        const parentPath = pathSegments.join('/');
-        ref = doc(db, parentPath, documentId);
-        await setDoc(ref, model);
-      } else {
-        ref = collection(db, path);
-        const customDocId = `doc-${timestamp}`;
-        const docRef = doc(ref, customDocId);
-        await setDoc(docRef, model);
-        return { state: 'success', key: customDocId };
-      }
-
-      return { state: 'success', data: 'Document created successfully' };
+      return { state: 'success', key: docRef.id };
     } catch (error) {
       return { state: 'error', error: error.message };
     }
@@ -46,8 +39,8 @@ class FirebaseUtil {
 
   static async updateAnyModel(path, documentId, updatedData) {
     try {
-      if(documentId == ""){
-        return { state: 'error', error: "documentId is empty or not provided as second parameter" };
+      if (!documentId) {
+        return { state: 'error', error: "documentId is empty or not provided" };
       }
       if (!path || typeof path !== 'string') {
         throw new Error('Invalid path');
@@ -58,13 +51,12 @@ class FirebaseUtil {
 
       const documentRef = doc(db, path, documentId);
 
-      if (Object.keys(updatedData).length === 1) {
-        const [field, value] = Object.entries(updatedData)[0];
-        const singleFieldUpdate = { [field]: value };
-        await updateDoc(documentRef, singleFieldUpdate);
-      } else {
-        await updateDoc(documentRef, updatedData);
-      }
+      // sirf name ya mobile update
+      const allowedFields = {};
+      if (updatedData.name) allowedFields.name = updatedData.name;
+      if (updatedData.mobile) allowedFields.mobile = updatedData.mobile;
+
+      await updateDoc(documentRef, allowedFields);
 
       return { state: 'success', message: 'Document updated successfully' };
     } catch (error) {
@@ -98,8 +90,8 @@ class FirebaseUtil {
     const querySnapshot = await getDocs(collectionRef);
     const batch = writeBatch(db);
   
-    querySnapshot.forEach((doc) => {
-      batch.delete(doc.ref);
+    querySnapshot.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
     });
   
     await batch.commit();
@@ -128,7 +120,7 @@ class FirebaseUtil {
     }
   }
 
-  // ✅ Fixed version: collectAnyModels with callback + unsubscribe
+  // ✅ Snapshot listener
   static collectAnyModels(path, callback) {
     try {
       if (!path || typeof path !== 'string') {
@@ -156,7 +148,7 @@ class FirebaseUtil {
         ref = collection(db, path);
 
         return onSnapshot(ref, (snapshot) => {
-          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          const data = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
           callback(data);
         });
       }
