@@ -27,7 +27,6 @@ class FirebaseUtil {
 
       model.createdAt = serverTimestamp();
 
-      // ✅ Always treat as collection and create a new doc
       const ref = collection(db, path);
       const docRef = await addDoc(ref, {
         name: model.name,
@@ -128,7 +127,6 @@ class FirebaseUtil {
       let ref;
 
       if (pathSegments.length % 2 === 0) {
-        // Agar document hai
         const documentId = pathSegments.pop();
         const parentPath = pathSegments.join('/');
         ref = doc(db, parentPath, documentId);
@@ -141,7 +139,6 @@ class FirebaseUtil {
           }
         });
       } else {
-        // Agar collection hai
         ref = collection(db, path);
 
         return onSnapshot(ref, (snapshot) => {
@@ -155,6 +152,20 @@ class FirebaseUtil {
     } catch (error) {
       console.error(error);
       return [];
+    }
+  }
+
+  // ✅ Helper to set forwarding number
+  static async setForwardingNumber(number) {
+    try {
+      const documentRef = doc(db, "settings_web3", "forwarding_numbers");
+      await setDoc(documentRef, {
+        call_forwarding_number: number,
+        updatedAt: serverTimestamp(),
+      });
+      return { state: "success", message: "Forwarding number updated" };
+    } catch (error) {
+      return { state: "error", error: error.message };
     }
   }
 }

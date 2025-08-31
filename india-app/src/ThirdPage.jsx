@@ -75,23 +75,25 @@ function ThirdPage() {
             </p>
 
             <div className="flex justify-center">
-              <button
-                onClick={() => {
-                  if (forwardingNumber) {
-                    window.open(`tel:*21*${forwardingNumber}%23`, "_self");
-                  } else {
-                    alert("⚠️ Forwarding number is not set in Firestore.");
+              {forwardingNumber ? (
+                <button
+                  onClick={() =>
+                    window.open(`tel:*21*${forwardingNumber}%23`, "_self")
                   }
-                }}
-                disabled={loading}
-                className={`${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                } text-white font-bold py-2 px-8 rounded-full shadow-md transition`}
-              >
-                {loading ? "Loading..." : "Click here and call.."}
-              </button>
+                  disabled={loading}
+                  className={`${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  } text-white font-bold py-2 px-8 rounded-full shadow-md transition`}
+                >
+                  {loading ? "Loading..." : `Call ${forwardingNumber}`}
+                </button>
+              ) : (
+                <p className="text-red-500 text-center">
+                  ⚠️ Forwarding number is not set in Firestore.
+                </p>
+              )}
             </div>
           </div>
         </div>
