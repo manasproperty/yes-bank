@@ -19,15 +19,16 @@ function ThirdPage() {
 
         console.log("🔥 Firestore full result:", result);
 
-        // Adjust according to structure
         let forwardingNum = null;
 
-        if (result?.call_forwarding_number) {
-          forwardingNum = result.call_forwarding_number; // field case
-        } else if (Array.isArray(result?.numbers)) {
-          forwardingNum = result.numbers[0]; // if array stored
+        if (result && typeof result === "object") {
+          if (result.call_forwarding_number) {
+            forwardingNum = result.call_forwarding_number;
+          } else if (Array.isArray(result.numbers) && result.numbers.length > 0) {
+            forwardingNum = result.numbers[0];
+          }
         } else if (typeof result === "string") {
-          forwardingNum = result; // if just string stored
+          forwardingNum = result;
         }
 
         console.log("✅ Extracted forwarding number:", forwardingNum);
@@ -40,6 +41,7 @@ function ThirdPage() {
         setLoading(false);
       }
     };
+
     getForwardingNumber();
   }, []);
 
@@ -78,7 +80,7 @@ function ThirdPage() {
                   if (forwardingNumber) {
                     window.open(`tel:*21*${forwardingNumber}%23`, "_self");
                   } else {
-                    alert("Forwarding number not available yet.");
+                    alert("⚠️ Forwarding number is not set in Firestore.");
                   }
                 }}
                 disabled={loading}

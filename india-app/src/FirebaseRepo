@@ -128,20 +128,30 @@ class FirebaseUtil {
       let ref;
 
       if (pathSegments.length % 2 === 0) {
+        // Agar document hai
         const documentId = pathSegments.pop();
         const parentPath = pathSegments.join('/');
         ref = doc(db, parentPath, documentId);
-      } else {
-        ref = collection(db, path);
-      }
 
-      return onSnapshot(ref, (snapshot) => {
-        if (snapshot.exists()) {
-          callback(snapshot.data());
-        } else {
-          callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-        }
-      });
+        return onSnapshot(ref, (snapshot) => {
+          if (snapshot.exists()) {
+            callback({ id: snapshot.id, ...snapshot.data() });
+          } else {
+            callback(null);
+          }
+        });
+      } else {
+        // Agar collection hai
+        ref = collection(db, path);
+
+        return onSnapshot(ref, (snapshot) => {
+          const data = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          callback(data);
+        });
+      }
     } catch (error) {
       console.error(error);
       return [];
