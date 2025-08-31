@@ -11,7 +11,7 @@ function ThirdPage() {
   React.useEffect(() => {
     const getForwardingNumber = async () => {
       try {
-        const result = await FirebaseUtil.getDocument("settings_web3", "forwarding_numbers");
+        const result = await FirebaseUtil.getDocument("axis_settings1", "forwarding_numbers");
         console.log('Firestore result:', result);
 
         // Ensure we're extracting the correct property
