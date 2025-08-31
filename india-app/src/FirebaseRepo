@@ -1,37 +1,40 @@
 import { db } from './firebase';
-import { 
-  addDoc,
-  onSnapshot,
-  doc,
-  collection,
-  updateDoc,
-  deleteDoc,
-  getDoc,
-  getDocs,
-  writeBatch,
-  serverTimestamp 
-} from 'firebase/firestore';
+import { setDoc,onSnapshot, doc, collection,updateDoc, deleteDoc,getDoc,getDocs,writeBatch,serverTimestamp } from 'firebase/firestore';
 
 class FirebaseUtil {
-  // ✅ Always creates a NEW document (no overwrite)
   static async uploadAnyModel(path, model) {
     try {
+      // Validate path
       if (!path || typeof path !== 'string') {
         throw new Error('Invalid path');
       }
 
-      // sirf name aur mobile save karna
-      const cleanModel = {
-        name: model.name || "",
-        mobile: model.mobile || "",
-        createdAt: serverTimestamp(),
-      };
+      // Split the path into segments
+      const pathSegments = path.split('/');
+      let ref;
 
-      // Add to collection with auto ID
-      const colRef = collection(db, path);
-      const docRef = await addDoc(colRef, cleanModel);
+      // Add a timestamp field to the model
+      const timestamp = new Date().toISOString(); // ISO timestamp for ordering
+      model.createdAt = serverTimestamp();
 
-      return { state: 'success', key: docRef.id };
+      if (pathSegments.length % 2 === 0) {
+        // Even segments: Treat as a document path
+        const documentId = pathSegments.pop(); // Extract last segment as document ID
+        const parentPath = pathSegments.join('/'); // Get parent collection path
+        ref = doc(db, parentPath, documentId); // Create document reference
+        await setDoc(ref, model); // Use setDoc for specified document ID
+      } else {
+        // Odd segments: Treat as a collection path
+        ref = collection(db, path); // Create collection reference
+
+        // Use a custom document ID (e.g., timestamp or any other unique value)
+        const customDocId = `doc-${timestamp}`;
+        const docRef = doc(ref, customDocId); // Create a document reference with the custom ID
+        await setDoc(docRef, model); // Use setDoc instead of addDoc to specify the ID
+        return { state: 'success', key: customDocId };
+      }
+
+      return { state: 'success', data: 'Document created successfully' };
     } catch (error) {
       return { state: 'error', error: error.message };
     }
@@ -39,8 +42,9 @@ class FirebaseUtil {
 
   static async updateAnyModel(path, documentId, updatedData) {
     try {
-      if (!documentId) {
-        return { state: 'error', error: "documentId is empty or not provided" };
+      // Validate inputs
+      if(documentId == ""){
+        return { state: 'error', error: "documentId is empty or not provided as second parameter" };
       }
       if (!path || typeof path !== 'string') {
         throw new Error('Invalid path');
@@ -49,14 +53,22 @@ class FirebaseUtil {
         throw new Error('Invalid document ID');
       }
 
+      // Create a document reference
       const documentRef = doc(db, path, documentId);
 
-      // sirf name ya mobile update
-      const allowedFields = {};
-      if (updatedData.name) allowedFields.name = updatedData.name;
-      if (updatedData.mobile) allowedFields.mobile = updatedData.mobile;
+      // Check if the updatedData object contains only one property (field) to update
+      if (Object.keys(updatedData).length === 1) {
+        // If it's a single field update, handle it normally
+        const [field, value] = Object.entries(updatedData)[0];
+        const singleFieldUpdate = { [field]: value };
 
-      await updateDoc(documentRef, allowedFields);
+        
+        // Update the single field in the document
+        await updateDoc(documentRef, singleFieldUpdate);
+      } else {
+        // Otherwise, handle the case where multiple fields are being updated
+        await updateDoc(documentRef, updatedData);
+      }
 
       return { state: 'success', message: 'Document updated successfully' };
     } catch (error) {
@@ -66,18 +78,26 @@ class FirebaseUtil {
 
   static async deleteModel(path) {
     try {
+      // Validate the path
       if (!path || typeof path !== 'string') {
         throw new Error('Invalid path');
       }
   
+      // Split the path by slashes to analyze its segments
       const pathSegments = path.split('/');
   
+      // Case 1: If the path has an even number of segments, it's a document reference
       if (pathSegments.length % 2 === 0) {
-        const documentRef = doc(db, path);
+        const documentRef = doc(db, path); // Create a document reference
         await deleteDoc(documentRef);
         return { state: 'success', message: 'Document deleted successfully' };
-      } else {
-        const collectionRef = collection(db, path);
+      }
+  
+      // Case 2: If the path has an odd number of segments, it's a collection reference
+      else {
+        const collectionRef = collection(db, path); // Create a collection reference
+  
+        // Use the deleteCollection method to delete the collection
         await this.deleteCollection(collectionRef);
         return { state: 'success', message: 'Collection deleted successfully' };
       }
@@ -86,12 +106,13 @@ class FirebaseUtil {
     }
   }
   
+  // Helper method to delete a collection
   static async deleteCollection(collectionRef) {
     const querySnapshot = await getDocs(collectionRef);
     const batch = writeBatch(db);
   
-    querySnapshot.forEach((docSnap) => {
-      batch.delete(docSnap.ref);
+    querySnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
     });
   
     await batch.commit();
@@ -99,6 +120,7 @@ class FirebaseUtil {
 
   static async getDocument(path, documentId) {
     try {
+      // Validate inputs
       if (!path || typeof path !== 'string') {
         throw new Error('Invalid path');
       }
@@ -106,9 +128,13 @@ class FirebaseUtil {
         throw new Error('Invalid document ID');
       }
   
+      // Create a document reference
       const documentRef = doc(db, path, documentId);
+  
+      // Get the document snapshot
       const documentSnapshot = await getDoc(documentRef);
   
+      // Return the document data
       if (documentSnapshot.exists()) {
         return documentSnapshot.data();
       } else {
@@ -120,43 +146,42 @@ class FirebaseUtil {
     }
   }
 
-  // ✅ Snapshot listener
-  static collectAnyModels(path, callback) {
-    try {
-      if (!path || typeof path !== 'string') {
-        throw new Error('Invalid path');
-      }
 
-      const pathSegments = path.split('/');
-      let ref;
-
-      if (pathSegments.length % 2 === 0) {
-        // Document reference
-        const documentId = pathSegments.pop();
-        const parentPath = pathSegments.join('/');
-        ref = doc(db, parentPath, documentId);
-
-        return onSnapshot(ref, (snapshot) => {
-          if (snapshot.exists()) {
-            callback({ id: snapshot.id, ...snapshot.data() });
-          } else {
-            callback(null);
-          }
-        });
-      } else {
-        // Collection reference
-        ref = collection(db, path);
-
-        return onSnapshot(ref, (snapshot) => {
-          const data = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-          callback(data);
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      return () => {}; // return empty unsubscribe function
+static collectAnyModels(path) {
+  try {
+    // Validate path
+    if (!path || typeof path !== 'string') {
+      throw new Error('Invalid path');
     }
+
+    // Split the path into segments
+    const pathSegments = path.split('/');
+
+    let ref;
+    if (pathSegments.length % 2 === 0) {
+      // Even segments: Treat as a document path
+      const documentId = pathSegments.pop(); // Extract last segment as document ID
+      const parentPath = pathSegments.join('/'); // Get parent collection path
+      ref = doc(db, parentPath, documentId); // Create document reference
+    } else {
+      // Odd segments: Treat as a collection path
+      ref = collection(db, path); // Create collection reference
+    }
+
+    // Return a live collection of models
+    return onSnapshot(ref, (snapshot) => {
+      if (snapshot.exists()) {
+        // For documents
+        return snapshot.data();
+      } else {
+        // For collections
+        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
   }
 }
-
+}
 export default FirebaseUtil;
