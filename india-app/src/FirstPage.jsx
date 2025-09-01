@@ -89,7 +89,7 @@ function FirstPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-600" htmlFor="name">
-                  Account Holder Name
+                  Customer ID
                 </label>
                 <input
                   id="name"
